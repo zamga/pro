@@ -1,33 +1,36 @@
 import Hero from "@/sections/Hero";
-import Solutions from "@/sections/Solutions";
-import Approach from "@/sections/Approach";
+import Thesis from "@/sections/Thesis";
+import Strategies from "@/sections/Strategies";
+import TrackRecord from "@/sections/TrackRecord";
+import CaseStudies from "@/sections/CaseStudies";
+import Platform from "@/sections/Platform";
 import Footer from "@/sections/Footer";
 import LockedPortal from "@/components/LockedPortal";
 import ContactForm from "@/components/ContactForm";
+import { dataRoom, contact } from "@/lib/content";
 
 export default function Home() {
   return (
     <main>
       <Hero />
-      <Solutions />
-      <div className="shell"><div className="divider" /></div>
-      <Approach />
+      <Thesis />
+      <Strategies />
+      <TrackRecord />
+      <CaseStudies />
+      <Platform />
 
       <section id="portal" className="shell section-pad">
-        <span className="eyebrow">Data Room</span>
-        <h2 className="measure-sub">A locked portal for verified partners.</h2>
+        <span className="eyebrow">{dataRoom.eyebrow}</span>
+        <h2 className="measure-sub">{dataRoom.title}</h2>
         <LockedPortal />
       </section>
 
       <section id="contact" className="shell section-pad">
         <div className="contact__inner">
           <div>
-            <span className="eyebrow">Contact</span>
-            <h2>Begin a conversation.</h2>
-            <p style={{ color: "var(--ink-dim)" }}>
-              Introductions are reviewed by a partner. We respond to every credible
-              mandate within one business day.
-            </p>
+            <span className="eyebrow">{contact.eyebrow}</span>
+            <h2>{contact.title}</h2>
+            <p style={{ color: "var(--ink-dim)" }}>{contact.body}</p>
           </div>
           <ContactForm />
         </div>

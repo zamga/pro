@@ -18,10 +18,16 @@ export default function Preloader() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.body.classList.add("is-loading");
 
+    const fireDone = () => {
+      window.__preloaderDone = true;
+      document.dispatchEvent(new Event("preloaderdone"));
+    };
+
     if (reduced) {
       setCount(100);
       setDone(true);
       document.body.classList.remove("is-loading");
+      fireDone();
       return;
     }
 
@@ -45,6 +51,7 @@ export default function Preloader() {
         setTimeout(() => {
           setDone(true);
           document.body.classList.remove("is-loading");
+          fireDone();
         }, 380);
       }
     };

@@ -644,3 +644,117 @@ section { position: relative; }
   }
   .marquee__track { animation: none; }
 }
+
+/* ============================================================================
+   AWWWARDS MOTION LAYER — Lenis, split masks, progress, magnetic, new sections
+   ========================================================================== */
+
+/* Lenis smooth scroll (recommended baseline). */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: clip; }
+
+/* Top scroll-progress bar. */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: 0 50%;
+  z-index: 9600; pointer-events: none; will-change: transform;
+}
+
+/* Line-mask text reveal. */
+.line-mask { display: block; overflow: hidden; padding-bottom: 0.14em; margin-bottom: -0.14em; }
+.line-inner { display: block; will-change: transform; }
+.w { display: inline-block; }
+
+/* Magnetic wrapper. */
+.magnetic { display: inline-block; will-change: transform; }
+
+/* Scroll cue under the hero. */
+.scroll-cue {
+  display: inline-flex; align-items: center; gap: 0.75em;
+  font-size: var(--step--1); letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ink-dim); margin-top: var(--space-l);
+}
+.scroll-cue::before {
+  content: ""; width: 1px; height: 2.5rem; background: var(--hairline); position: relative;
+  animation: cue 2.4s var(--ease-out-expo) infinite;
+}
+@keyframes cue { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* THESIS — pinned scrollytelling */
+.thesis { position: relative; }
+.thesis__stage {
+  min-height: 100svh; display: grid; align-items: center;
+  grid-template-columns: 1fr; gap: var(--space-l);
+}
+@media (min-width: 880px) { .thesis__stage { grid-template-columns: 0.8fr 1.2fr; gap: var(--space-2xl); } }
+.thesis__intro { color: var(--ink-dim); font-size: var(--step-1); line-height: 1.5; }
+.thesis__steps { position: relative; min-height: 16rem; }
+.thesis__step {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--space-s);
+  opacity: 0;
+}
+.thesis__index {
+  font-family: var(--font-display), sans-serif; color: var(--accent);
+  font-size: var(--step-3); letter-spacing: -0.02em;
+}
+.thesis__step h3 { margin: 0; }
+.thesis__step p { color: var(--ink-dim); font-size: var(--step-1); line-height: 1.5; }
+.thesis__rail { display: flex; gap: var(--space-2xs); margin-top: var(--space-m); }
+.thesis__tick { flex: 1; height: 2px; background: var(--hairline); overflow: hidden; }
+.thesis__tick i { display: block; height: 100%; width: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
+
+/* STRATEGIES — refined solution cards */
+.solution__points { list-style: none; display: flex; flex-direction: column; gap: var(--space-2xs); margin-top: var(--space-s); }
+.solution__points li {
+  font-size: var(--step--1); color: var(--ink-dim); padding-left: 1.25em; position: relative;
+}
+.solution__points li::before { content: "—"; position: absolute; left: 0; color: var(--accent); }
+
+/* TRACK RECORD */
+.track__grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  border-top: 1px solid var(--hairline); margin-top: var(--space-xl);
+}
+.track__stat {
+  padding: var(--space-l) var(--space-m) var(--space-l) 0;
+  border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: var(--space-2xs);
+}
+.track__value {
+  font-family: var(--font-display), sans-serif; font-size: var(--step-5);
+  letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.track__label { font-size: var(--step--1); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.track__note { color: var(--ink-dim); font-size: var(--step-0); max-width: 60ch; margin-top: var(--space-l); }
+
+/* CASE STUDIES — horizontal pinned track */
+.cases { position: relative; }
+.cases__head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-l); flex-wrap: wrap; }
+.cases__hint { font-size: var(--step--1); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.cases__viewport { overflow: hidden; margin-top: var(--space-xl); }
+.cases__track { display: flex; gap: var(--space-l); will-change: transform; }
+.case {
+  flex: 0 0 auto; width: min(86vw, 30rem); border: 1px solid var(--hairline);
+  padding: var(--space-l); display: flex; flex-direction: column; gap: var(--space-s);
+  background: rgba(244, 241, 234, 0.015);
+}
+.case__top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-s); }
+.case__type { font-size: var(--step--1); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+.case__year { font-size: var(--step--1); color: var(--ink-dim); }
+.case__amount { font-family: var(--font-display), sans-serif; font-size: var(--step-5); letter-spacing: -0.04em; line-height: 1; }
+.case__cp { font-size: var(--step-0); color: var(--ink); }
+.case__region { font-size: var(--step--1); color: var(--ink-dim); }
+.case__line { height: 1px; background: var(--hairline); margin-block: var(--space-2xs); }
+.case__row { font-size: var(--step--1); color: var(--ink-dim); line-height: 1.5; }
+.case__row b { color: var(--ink); font-weight: 500; }
+
+/* PLATFORM */
+.platform__inner { display: grid; grid-template-columns: 1fr; gap: var(--space-l); }
+@media (min-width: 880px) { .platform__inner { grid-template-columns: 1fr 1fr; gap: var(--space-2xl); } }
+.platform__body p { color: var(--ink-dim); font-size: var(--step-1); line-height: 1.5; }
+.platform__body p + p { margin-top: var(--space-m); }
+.platform__pillars { display: flex; flex-direction: column; gap: var(--space-l); }
+.pillar { border-top: 1px solid var(--hairline); padding-top: var(--space-s); }
+.pillar h3 { margin: 0 0 var(--space-2xs); font-size: var(--step-1); }
+.pillar p { color: var(--ink-dim); font-size: var(--step-0); }

@@ -4,6 +4,8 @@ import "./globals.css";
 import Grain from "@/components/Grain";
 import CustomCursor from "@/components/CustomCursor";
 import Preloader from "@/components/Preloader";
+import ScrollProvider from "@/components/providers/ScrollProvider";
+import ParticleFieldLazy from "@/components/webgl/ParticleFieldLazy";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -34,9 +36,10 @@ export default function RootLayout({
     <html lang="en" className={`${display.variable} ${text.variable}`}>
       <body>
         <Preloader />
+        <ParticleFieldLazy />
         <Grain />
         <CustomCursor />
-        {children}
+        <ScrollProvider>{children}</ScrollProvider>
       </body>
     </html>
   );

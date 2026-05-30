@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Magnetic from "@/components/motion/Magnetic";
 
 /**
  * (7b) Editorial contact form with floating labels.
@@ -39,9 +40,11 @@ export default function ContactForm() {
         <textarea id="cf-note" placeholder=" " rows={2} />
         <label htmlFor="cf-note">Mandate &amp; size</label>
       </div>
-      <button className="btn" type="submit" data-cursor="connect">
-        Request Introduction →
-      </button>
+      <Magnetic strength={0.5}>
+        <button className="btn" type="submit" data-cursor="connect">
+          Request Introduction →
+        </button>
+      </Magnetic>
       <p className="form__status" role="status" aria-live="polite">{status}</p>
     </form>
   );

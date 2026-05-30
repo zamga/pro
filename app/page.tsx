@@ -4,6 +4,7 @@ import Strategies from "@/sections/Strategies";
 import TrackRecord from "@/sections/TrackRecord";
 import CaseStudies from "@/sections/CaseStudies";
 import Platform from "@/sections/Platform";
+import Statement from "@/sections/Statement";
 import Footer from "@/sections/Footer";
 import LockedPortal from "@/components/LockedPortal";
 import ContactForm from "@/components/ContactForm";
@@ -17,6 +18,7 @@ export default function Home() {
       <Strategies />
       <TrackRecord />
       <CaseStudies />
+      <Statement />
       <Platform />
 
       <section id="portal" className="shell section-pad">

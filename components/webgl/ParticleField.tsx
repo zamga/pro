@@ -3,26 +3,50 @@
 /**
  * "Structure from the Unseen" — the signature WebGL moment.
  *
- * A single fixed full-viewport THREE.Points field sits behind the whole page
- * (zIndex -1, transparent — the static obsidian background shows through). The
- * particles assemble out of chaos when the preloader finishes, react to the
- * cursor, breathe at idle, and — in the final ~22% of the scroll — morph into
- * the "O" monogram while the camera dollies in.
+ * A single fixed full-viewport field sits behind the whole page (zIndex -1,
+ * transparent — the static obsidian background shows through). It is built from
+ * TWO draw calls over ONE shared geometry:
+ *
+ *   - THREE.Points       — the grid nodes.
+ *   - THREE.LineSegments  — an orthogonal "scaffold" wiring adjacent nodes into
+ *                           a precise wireframe (digital scaffolding / structured
+ *                           safety). The lines share the exact per-vertex
+ *                           displacement as the points (one shared GLSL
+ *                           displace()), so the structure flexes as one body.
+ *
+ * The field assembles out of DEEP Z-chaos when the preloader finishes, reacts
+ * to the cursor (repulsion + a travelling brass bloom that lights up the
+ * scaffold), breathes at idle, parallaxes faintly toward the cursor, and — in
+ * the final ~22% of scroll — morphs into a clean, bright "O" monogram while the
+ * camera dollies in and the scaffold lines fade out.
  *
  * Displacement is entirely stateless (see lib/webgl/shaders.ts): all motion is
- * driven by uniforms over static per-particle attributes. No GPGPU.
+ * driven by uniforms over static per-vertex attributes. No GPGPU.
  */
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { gsap, ScrollTrigger, registerGsap } from "@/lib/gsap";
 import { buildField } from "@/lib/webgl/buildField";
-import { vertexShader, fragmentShader } from "@/lib/webgl/shaders";
+import {
+  vertexShader,
+  fragmentShader,
+  lineVertexShader,
+  lineFragmentShader,
+} from "@/lib/webgl/shaders";
 
 /** Camera reference distance; the dolly pulls in from here. */
 const CAM_Z = 14;
 /** Field-of-view (deg) — wide enough for a generous world plane. */
 const FOV = 60;
+
+/** Obsidian fog colour (matches the static background) — far nodes recede. */
+const FOG_COLOR = 0x060708;
+const FOG_DENSITY = 0.022;
+
+/** Palette. Ink #f4f1ea base, brass #c8a25e glow. */
+const INK = new THREE.Color(0.957, 0.945, 0.918); // #f4f1ea
+const BRASS = new THREE.Color(0.78, 0.635, 0.37); // #c8a25e
 
 /** Navigator with the non-standard deviceMemory hint. */
 interface NavigatorWithMemory extends Navigator {
@@ -76,6 +100,10 @@ export default function ParticleField() {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
 
     const scene = new THREE.Scene();
+    // Exponential-squared fog: applied in-shader (see fragment stages) so far
+    // nodes recede into the obsidian for real cinematic depth.
+    scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
+
     const camera = new THREE.PerspectiveCamera(
       FOV,
       window.innerWidth / window.innerHeight,
@@ -91,10 +119,16 @@ export default function ParticleField() {
       return { worldW: w, worldH: h };
     };
 
-    // --- Geometry + material ---------------------------------------------
-    const geometry = new THREE.BufferGeometry();
+    // --- Geometry: points (non-indexed) + lines (indexed scaffold) -------
+    // The two geometries SHARE the same BufferAttribute instances for the
+    // per-vertex data — only the lines carry an index. This keeps one copy of
+    // the attribute buffers in memory and exactly two draw calls (a non-indexed
+    // Points geometry would otherwise be forced to render through the line
+    // index, drawing the wrong vertices).
+    const pointsGeo = new THREE.BufferGeometry();
+    const linesGeo = new THREE.BufferGeometry();
 
-    /** (Re)compute and assign all four attributes onto the geometry. */
+    /** (Re)compute and assign all attributes onto both geometries. */
     const assignAttributes = () => {
       const { worldW, worldH } = worldSize();
       const field = buildField({
@@ -103,33 +137,54 @@ export default function ParticleField() {
         worldW,
         worldH,
       });
-      geometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(field.position, 3)
-      );
-      geometry.setAttribute("aChaos", new THREE.BufferAttribute(field.aChaos, 3));
-      geometry.setAttribute(
-        "aTarget",
-        new THREE.BufferAttribute(field.aTarget, 3)
-      );
-      geometry.setAttribute("aRnd", new THREE.BufferAttribute(field.aRnd, 1));
-      return { worldW, worldH };
+      const posAttr = new THREE.BufferAttribute(field.position, 3);
+      const chaosAttr = new THREE.BufferAttribute(field.aChaos, 3);
+      const targetAttr = new THREE.BufferAttribute(field.aTarget, 3);
+      const rndAttr = new THREE.BufferAttribute(field.aRnd, 1);
+
+      pointsGeo.setAttribute("position", posAttr);
+      pointsGeo.setAttribute("aChaos", chaosAttr);
+      pointsGeo.setAttribute("aTarget", targetAttr);
+      pointsGeo.setAttribute("aRnd", rndAttr);
+
+      // Same attribute instances; the index turns adjacent nodes into segments.
+      linesGeo.setAttribute("position", posAttr);
+      linesGeo.setAttribute("aChaos", chaosAttr);
+      linesGeo.setAttribute("aTarget", targetAttr);
+      linesGeo.setAttribute("aRnd", rndAttr);
+      linesGeo.setIndex(new THREE.BufferAttribute(field.lineIndex, 1));
+
+      return { worldW, worldH, field };
     };
 
-    let { worldW, worldH } = assignAttributes();
+    let assigned = assignAttributes();
+    let worldW = assigned.worldW;
+    let worldH = assigned.worldH;
 
+    if (typeof console !== "undefined" && typeof console.debug === "function") {
+      // Count logic: points = cols*rows nodes; lines = right + down edges.
+      console.debug(
+        `[ParticleField] ${assigned.field.count} nodes / ` +
+          `${assigned.field.lineCount} scaffold segments ` +
+          `(${assigned.field.cols}x${assigned.field.rows})`
+      );
+    }
+
+    // --- Uniforms (shared object: one update drives both materials) ------
     const uniforms = {
       uAssemble: { value: 0 },
       uMorph: { value: 0 },
       uMouse: { value: new THREE.Vector2(9999, 9999) },
       uTime: { value: 0 },
-      uRadius: { value: worldH * 0.18 },
+      uRadius: { value: worldH * 0.26 }, // widened cursor influence
       uStrength: { value: worldH * 0.06 },
       uDPR: { value: dpr },
       uCamZ: { value: CAM_Z },
-      uSize: { value: 7 },
-      uColor: { value: new THREE.Color(0.9569, 0.9451, 0.9176) },
-      uGlowColor: { value: new THREE.Color(1.0, 0.965, 0.86) },
+      uSize: { value: 6.5 },
+      uColor: { value: INK.clone() },
+      uGlowColor: { value: BRASS.clone() },
+      uFogColor: { value: new THREE.Color(FOG_COLOR) },
+      uFogDensity: { value: FOG_DENSITY },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -142,22 +197,49 @@ export default function ParticleField() {
       blending: THREE.NormalBlending,
     });
 
-    const points = new THREE.Points(geometry, material);
-    points.frustumCulled = false; // displacement can move particles off the home bounds
-    scene.add(points);
+    // Lines share the SAME uniforms object -> they always agree with points.
+    const lineMaterial = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: lineVertexShader,
+      fragmentShader: lineFragmentShader,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+    });
+
+    // Parallax group: the whole field rotates a few hundredths of a radian
+    // toward the cursor for a subtle living-depth effect.
+    const group = new THREE.Group();
+
+    const points = new THREE.Points(pointsGeo, material);
+    points.frustumCulled = false; // displacement moves vertices off home bounds
+
+    const lines = new THREE.LineSegments(linesGeo, lineMaterial);
+    lines.frustumCulled = false;
+
+    group.add(lines); // draw scaffold first (behind), nodes on top
+    group.add(points);
+    scene.add(group);
 
     // --- Cursor (world-space target, lerped each tick) -------------------
     const mouseTarget = new THREE.Vector2(9999, 9999);
+    // Normalised pointer [-1,1] for the parallax (independent of leave reset).
+    const parallaxTarget = new THREE.Vector2(0, 0);
+    const parallax = new THREE.Vector2(0, 0);
 
     const toWorld = (clientX: number, clientY: number) => {
-      // Map screen coords to the world plane at z=0.
       const nx = (clientX / window.innerWidth) * 2 - 1;
       const ny = -((clientY / window.innerHeight) * 2 - 1);
       mouseTarget.set((nx * worldW) / 2, (ny * worldH) / 2);
+      parallaxTarget.set(nx, ny);
     };
 
     const onMouseMove = (e: MouseEvent) => toWorld(e.clientX, e.clientY);
-    const onMouseLeave = () => mouseTarget.set(9999, 9999);
+    const onMouseLeave = () => {
+      mouseTarget.set(9999, 9999);
+      parallaxTarget.set(0, 0);
+    };
     window.addEventListener("mousemove", onMouseMove, { passive: true });
     window.addEventListener("mouseleave", onMouseLeave, { passive: true });
 
@@ -173,7 +255,7 @@ export default function ParticleField() {
       const proxy = { v: 0 };
       assembleTween = gsap.to(proxy, {
         v: 1,
-        duration: 1.6,
+        duration: 1.8,
         ease: "custom",
         onUpdate: () => {
           uniforms.uAssemble.value = proxy.v;
@@ -202,8 +284,12 @@ export default function ParticleField() {
       scrub: 1,
       onUpdate: (self) => {
         const p = self.progress;
-        camera.position.z = CAM_Z - p * 11;
-        uniforms.uMorph.value = THREE.MathUtils.clamp((p - 0.78) / 0.22, 0, 1);
+        // Dolly INTO the lattice through the page, then pull BACK during the
+        // morph so the monogram is framed and legible (not giant blurred bokeh).
+        const morph = THREE.MathUtils.clamp((p - 0.78) / 0.22, 0, 1);
+        const flythrough = Math.min(p / 0.78, 1);
+        camera.position.z = CAM_Z - flythrough * 6 + morph * 5; // 14 → 8 → 13
+        uniforms.uMorph.value = morph;
       },
     });
 
@@ -212,6 +298,10 @@ export default function ParticleField() {
       uniforms.uTime.value = time;
       // Smoothly chase the cursor target.
       uniforms.uMouse.value.lerp(mouseTarget, 0.1);
+      // Faint continuous parallax of the whole field toward the cursor.
+      parallax.lerp(parallaxTarget, 0.04);
+      group.rotation.y = parallax.x * 0.05;
+      group.rotation.x = -parallax.y * 0.05;
       renderer.render(scene, camera);
     };
     gsap.ticker.add(tick);
@@ -233,8 +323,10 @@ export default function ParticleField() {
     };
     const onContextRestored = () => {
       // Rebuild GPU-side resources, then resume.
-      ({ worldW, worldH } = assignAttributes());
-      uniforms.uRadius.value = worldH * 0.18;
+      assigned = assignAttributes();
+      worldW = assigned.worldW;
+      worldH = assigned.worldH;
+      uniforms.uRadius.value = worldH * 0.26;
       uniforms.uStrength.value = worldH * 0.06;
       renderer.setPixelRatio(dpr);
       renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -251,9 +343,11 @@ export default function ParticleField() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight, false);
-        // Rebuild geometry attributes on the SAME Points object.
-        ({ worldW, worldH } = assignAttributes());
-        uniforms.uRadius.value = worldH * 0.18;
+        // Rebuild geometry attributes on the SAME geometry (points + lines).
+        assigned = assignAttributes();
+        worldW = assigned.worldW;
+        worldH = assigned.worldH;
+        uniforms.uRadius.value = worldH * 0.26;
         uniforms.uStrength.value = worldH * 0.06;
         ScrollTrigger.refresh();
       }, 180);
@@ -276,8 +370,10 @@ export default function ParticleField() {
       canvas.removeEventListener("webglcontextlost", onContextLost);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);
 
-      geometry.dispose();
+      pointsGeo.dispose();
+      linesGeo.dispose();
       material.dispose();
+      lineMaterial.dispose();
       renderer.dispose();
     };
   }, []);

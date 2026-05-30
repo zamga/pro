@@ -1,26 +1,14 @@
 import Marquee from "@/components/Marquee";
+import Nav from "@/components/Nav";
 import SplitLines from "@/components/motion/SplitLines";
 import Counter from "@/components/motion/Counter";
-import { nav, hero, type Metric } from "@/lib/content";
+import Magnetic from "@/components/motion/Magnetic";
+import { hero, type Metric } from "@/lib/content";
 
 export default function Hero() {
   return (
     <>
-      <header className="nav shell" style={{ maxWidth: "none" }}>
-        <span className="nav__mark" data-cursor="discover">
-          {nav.brand}
-          <span style={{ color: "var(--accent)" }}>.</span>
-        </span>
-        <nav>
-          <ul className="nav__links">
-            {nav.links.map((l) => (
-              <li key={l.href}>
-                <a href={l.href} data-cursor="discover">{l.label}</a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
+      <Nav />
 
       <section id="hero" className="hero shell">
         <div className="hero__inner">
@@ -44,6 +32,11 @@ export default function Hero() {
               </div>
             ))}
           </dl>
+          <div className="hero__cta">
+            <Magnetic strength={0.5}>
+              <a className="btn btn--solid" href="#contact" data-cursor="connect">Request access →</a>
+            </Magnetic>
+          </div>
           <span className="scroll-cue" data-cursor="discover">Scroll</span>
         </div>
       </section>

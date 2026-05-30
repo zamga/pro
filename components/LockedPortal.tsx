@@ -1,16 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Magnetic from "@/components/motion/Magnetic";
+import { dataRoom } from "@/lib/content";
 
 /**
- * (7a) Secure "Locked Portal" / virtual data room.
- *
- * A password block floats over a blurred SECURE backdrop. Wrong submissions
- * trigger a custom in-card "security audit" message + shake (no native alert()).
+ * Secure "Locked Portal" / virtual data room. A password block floats over a
+ * blurred SECURE backdrop. Wrong submissions trigger a custom in-card "security
+ * audit" message + shake (no native alert()). Copy comes from lib/content.
  */
 export default function LockedPortal() {
   const [value, setValue] = useState("");
-  const [msg, setMsg] = useState("Authorized counterparties only.");
+  const [msg, setMsg] = useState<string>(dataRoom.messages.idle);
   const [state, setState] = useState<"idle" | "error" | "ok">("idle");
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -21,12 +22,12 @@ export default function LockedPortal() {
     // No real credential — this is a presentational gate.
     if (value.trim().toLowerCase() === "obsidian") {
       setState("ok");
-      setMsg("Credentials accepted — provisioning secure session…");
+      setMsg(dataRoom.messages.success);
       return;
     }
 
     setState("error");
-    setMsg(`Access denied — audit logged ${new Date().toLocaleTimeString()}. Request clearance below.`);
+    setMsg(`${dataRoom.messages.errorPrefix} — audit logged ${new Date().toLocaleTimeString()}.`);
     const card = cardRef.current;
     if (card) {
       card.classList.remove("is-shaking");
@@ -39,24 +40,23 @@ export default function LockedPortal() {
     <div className="portal" data-cursor="decrypt">
       <div className="portal__backdrop" aria-hidden="true">SECURE</div>
       <div ref={cardRef} className="portal__card">
-        <span className="portal__lock">◈ Encrypted Data Room</span>
-        <h3 style={{ margin: 0 }}>Limited Partner Access</h3>
-        <p style={{ color: "var(--ink-dim)", fontSize: "var(--step--1)" }}>
-          Diligence materials, capital account statements and facility documentation
-          are gated to verified LPs.
-        </p>
+        <span className="portal__lock">◈ {dataRoom.lockLabel} Data Room</span>
+        <h3 style={{ margin: 0 }}>{dataRoom.card.heading}</h3>
+        <p style={{ color: "var(--ink-dim)", fontSize: "var(--step--1)" }}>{dataRoom.card.body}</p>
         <form className="portal__row" onSubmit={submit}>
           <input
             className="portal__input"
             type="password"
-            placeholder="• • • • • • • •"
+            placeholder={dataRoom.inputPlaceholder}
             aria-label="Access credential"
             value={value}
             onChange={(e) => { setValue(e.target.value); setState("idle"); }}
           />
-          <button className="btn btn--solid" type="submit" data-cursor="decrypt">
-            Decrypt
-          </button>
+          <Magnetic strength={0.45}>
+            <button className="btn btn--solid" type="submit" data-cursor="decrypt">
+              {dataRoom.buttonLabel}
+            </button>
+          </Magnetic>
         </form>
         <p
           className={`portal__msg${state === "error" ? " is-error" : state === "ok" ? " is-ok" : ""}`}
